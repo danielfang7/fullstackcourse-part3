@@ -1,7 +1,21 @@
+// Express Middleware
 const express = require('express')
 const app = express()
-
 app.use(express.json())
+app.use(express.static('dist'))
+
+// CORS middleware
+const cors = require('cors')
+app.use(cors())
+
+// Custom token in Morgan to log POST request bodies
+const morgan = require('morgan')
+morgan.token('postdata', (req, res) => {
+    return req.method === 'POST' ? JSON.stringify(req.body) : '';
+  })
+
+// Morgan setup to use custom token
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :postdata'))
 
 let persons = [
     {
@@ -25,6 +39,10 @@ let persons = [
         "number": "39-23-6423122"
     }
 ]
+
+app.get('/', (request, response) => {
+    response.send('<h1>Hello World!</h1>')
+})
 
 app.get('/api/persons', (request, response) => {
     response.json(persons)
@@ -93,7 +111,7 @@ app.get('/info', (request, response) => {
     response.send(infoContent)
 })
 
-const PORT = 3002
+const PORT = process.env.PORT || 3002
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 })
