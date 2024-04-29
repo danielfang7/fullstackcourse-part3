@@ -20,35 +20,28 @@ morgan.token('postdata', (req, res) => {
 // Morgan setup to use custom token
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :postdata'))
 
-let persons = [
-    {
-        "id": 1,
-        "name": "Arto Hellas",
-        "number": "040-123456"
-    },
-    {
-        "id": 2,
-        "name": "Ada Lovelace",
-        "number": "39-44-5323523"
-    },
-    {
-        "id": 3,
-        "name": "Dan Abramov",
-        "number": "12-43-234345"
-    },
-    {
-        "id": 4,
-        "name": "Mary Poppendieck",
-        "number": "39-23-6423122"
-    }
-]
+// Logger
+const requestLogger = (request, response, next) => {
+    console.log('Method:', request.method)
+    console.log('Path:  ', request.path)
+    console.log('Body:  ', request.body)
+    console.log('---')
+    next()
+}
+app.use(requestLogger)
+
+const unknownEndpoint = (request, response) => {
+    response.status(404).send({ error: 'unknown endpoint' })
+  }
 
 app.get('/', (request, response) => {
     response.send('<h1>Hello World!</h1>')
 })
 
 app.get('/api/persons', (request, response) => {
-    response.json(persons)
+    Person.find({}).then(persons => {
+        response.json(persons)
+    })
 })
 
 app.get('/api/persons/:id', (request, response) => {
@@ -58,9 +51,11 @@ app.get('/api/persons/:id', (request, response) => {
 })
 
 app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    persons = persons.filter(person => person.id !== id)
-    response.status(204).end()
+    Person.findByIdAndRemove(request.params.id)
+        .then(result => {
+            response.status(204).end()
+        })
+        .catch(error => response.status(400).send({ error: 'malformatted id' }))
 })
 
 function getRandomInt(max) {
@@ -87,29 +82,19 @@ app.post('/api/persons', (request, response) => {
         })
     }
 
-    // // Check if the added person's name already exists
-    // if (persons.some(person => person.name === name)) {
-    //     return response.status(400).json({
-    //         error: 'name must be unique'
-    //     })
-    // }
-
-    const newID = generateRandomId();
-
     const person = new Person({
-        id: newID,
         name: name,
         number: number,
-    });
+    })
 
     person.save()
         .then(savedPerson => {
             response.json(savedPerson)
         })
-        .catch(error => { 
+        .catch(error => {
             console.error('Error saving the person:', error);
-            response.status(500).json({ error: 'failed to save person' });
-        });
+            response.status(500).json({ error: 'failed to save person' })
+        })
 })
 
 app.get('/info', (request, response) => {
@@ -118,6 +103,8 @@ app.get('/info', (request, response) => {
     const infoContent = `<p>Phonebook has info for ${numPersons} people</p><p>${requestTime}</p>`
     response.send(infoContent)
 })
+
+app.use(unknownEndpoint)
 
 const PORT = process.env.PORT || 3002
 app.listen(PORT, () => {
