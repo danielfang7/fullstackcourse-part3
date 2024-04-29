@@ -1,3 +1,6 @@
+require('dotenv').config()
+const Person = require('./models/person')
+
 // Express Middleware
 const express = require('express')
 const app = express()
@@ -12,7 +15,7 @@ app.use(cors())
 const morgan = require('morgan')
 morgan.token('postdata', (req, res) => {
     return req.method === 'POST' ? JSON.stringify(req.body) : '';
-  })
+})
 
 // Morgan setup to use custom token
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :postdata'))
@@ -49,13 +52,9 @@ app.get('/api/persons', (request, response) => {
 })
 
 app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const person = persons.find(persons => persons.id === id)
-    if (person) {
-        response.json(person)
-    } else {
-        response.status(404).end()
-    }
+    Person.findById(request.params.id).then(note => {
+        response.json(note)
+    })
 })
 
 app.delete('/api/persons/:id', (request, response) => {
@@ -78,6 +77,8 @@ const generateRandomId = () => {
 
 app.post('/api/persons', (request, response) => {
     const { name, number } = request.body
+    console.log('name:', name);
+    console.log('number:', number);
 
     // Check if the added person's name or number is missing 
     if (!name || !number) {
@@ -86,22 +87,29 @@ app.post('/api/persons', (request, response) => {
         })
     }
 
-    // Check if the added person's name already exists
-    if (persons.some(person => person.name === name)) {
-        return response.status(400).json({
-            error: 'name must be unique'
-        })
-    }
+    // // Check if the added person's name already exists
+    // if (persons.some(person => person.name === name)) {
+    //     return response.status(400).json({
+    //         error: 'name must be unique'
+    //     })
+    // }
 
     const newID = generateRandomId();
-    const person = {
+
+    const person = new Person({
         id: newID,
-        name,
-        number
-    }
-    persons = persons.concat(person)
-    console.log(`Added: ${JSON.stringify(person)}`)
-    response.json(person)
+        name: name,
+        number: number,
+    });
+
+    person.save()
+        .then(savedPerson => {
+            response.json(savedPerson)
+        })
+        .catch(error => { 
+            console.error('Error saving the person:', error);
+            response.status(500).json({ error: 'failed to save person' });
+        });
 })
 
 app.get('/info', (request, response) => {
