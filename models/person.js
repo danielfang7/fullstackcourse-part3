@@ -8,6 +8,7 @@ const url = process.env.MONGODB_URI
 console.log('connecting to', url)
 
 mongoose.connect(url)
+  // eslint-disable-next-line no-unused-vars
   .then(result => {
     console.log('connected to MongoDB')
   })
@@ -15,23 +16,23 @@ mongoose.connect(url)
     console.log('error connecting to MongoDB:', error.message)
   })
 
-  const personSchema = new mongoose.Schema({
-      name: {
-        type: String,
-        minLength: 3,
-        required: true
+const personSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    minLength: 3,
+    required: true
+  },
+  number: {
+    type: String,
+    required: true,
+    validate: {
+      validator: function(v) {
+        return phoneRegex.test(v)
       },
-      number: {
-        type: String, 
-        required: true,
-        validate: {
-          validator: function(v) {
-            return phoneRegex.test(v);
-          },
-          message: props => `${props.value} is not a valid phone number`
-        }
-      }
-  });
+      message: props => `${props.value} is not a valid phone number`
+    }
+  }
+})
 
 personSchema.set('toJSON', {
   transform: (document, returnedObject) => {
